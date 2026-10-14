@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bola Melompat — Game Modern</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-shadow: 0 0 20px #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .score-board {
+            font-size: 1.2rem;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 30px;
+            border-radius: 50px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #0c1929, #1a2c47);
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.25);
+            border: 2px solid rgba(0, 212, 255, 0.4);
+        }
+
+        .instruksi {
+            margin-top: 20px;
+            font-size: 0.95rem;
+            color: #a0d8ef;
+            text-align: center;
+        }
+
+        .tombol-mulai {
+            margin-top: 20px;
+            padding: 12px 35px;
+            font-size: 1rem;
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .tombol-mulai:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Bola Melompat</h1>
+    <div class="score-board">Skor: <span id="skor">0</span></div>
+    <canvas id="layar" width="800" height="400"></canvas>
+    
+    <div class="instruksi">
+        Tekan <b>Spasi</b> atau <b>Klik Layar</b> untuk melompat<br>
+        Hindari rintangan yang datang!
+    </div>
+    
+    <button class="tombol-mulai" id="btnMulai">Mulai Permainan</button>
+
+    <script>
+        const kanvas = document.getElementById('layar');
+        const ctx = kanvas.getContext('2d');
+        const skorTampil = document.getElementById('skor');
+        const btnMulai = document.getElementById('btnMulai');
+
+        let bola = {
+            x: 100,
+            y: 300,
+            w: 30,
+            h: 30,
+            vy: 0,
+            lompat: -10,
+            gravitasi: 0.6,
+            diTanah: true
+        };
+
+        let rintangan = [];
+        let kecepatan = 4;
+        let jarakRintangan = 0;
+        let skor = 0;
+        let gameJalankan = false;
+
+        function resetGame() {
+            bola.y = 300;
+            bola.vy = 0;
+            bola.diTanah = true;
+            rintangan = [];
+            jarakRintangan = 0;
+            skor = 0;
+            kecepatan = 4;
+            skorTampil.textContent = skor;
+            gameJalankan = true;
+            btnMulai.style.display = 'none';
+        }
+
+        function lompat() {
+            if (bola.diTanah) {
+                bola.vy = bola.lompat;
+                bola.diTanah = false;
+            }
+        }
+
+        function buatRintangan() {
+            let tinggi = 50 + Math.random() * 50;
+            rintangan.push({
+                x: kanvas.width,
+                y: kanvas.height - tinggi,
+                w: 25,
+                h: tinggi
+            });
+        }
+
+        function update() {
+            if (!gameJalankan) return;
+
+            // Gravitasi bola
+            bola.vy += bola.gravitasi;
+            bola.y += bola.vy;
+            
+            if (bola.y + bola.h >= kanvas.height) {
+                bola.y = kanvas.height - bola.h;
+                bola.vy = 0;
+                bola.diTanah = true;
+            }
+
+            // Rintangan bergerak
+            jarakRintangan -= kecepatan;
+            if (jarakRintangan <= 0) {
+                buatRintangan();
+                jarakRintangan = 150 + Math.random() * 100;
+            }
+
+            for (let i = rintangan.length - 1; i >= 0; i--) {
+                rintangan[i].x -= kecepatan;
+
+                // Hapus rintangan yang lewat
+                if (rintangan[i].x + rintangan[i].w < 0) {
+                    rintangan.splice(i, 1);
+                    skor++;
+                    skorTampil.textContent = skor;
+                    kecepatan += 0.05; // Semakin lama semakin cepat
+                    continue;
+                }
+
+                // Cek tabrakan
+                if (
+                    bola.x < rintangan[i].x + rintangan[i].w &&
+                    bola.x + bola.w > rintangan[i].x &&
+                    bola.y < rintangan[i].y + rintangan[i].h &&
+                    bola.y + bola.h > rintangan[i].y
+                ) {
+                    gameJalankan = false;
+                    btnMulai.style.display = 'inline-block';
+                }
+            }
+        }
+
+        function gambar() {
+            // Bersihkan layar
+            ctx.clearRect(0, 0, kanvas.width, kanvas.height);
+
+            // Garis tanah
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, kanvas.height - 1);
+            ctx.lineTo(kanvas.width, kanvas.height - 1);
+            ctx.stroke();
+
+            // Gambar bola
+            let gradasiBola = ctx.createRadialGradient(
+                bola.x + bola.w/2, bola.y + bola.h/2, 5,
+                bola.x + bola.w/2, bola.y + bola.h/2, bola.w/2
+            );
+            gradasiBola.addColorStop(0, '#00ffff');
+            gradasiBola.addColorStop(1, '#0066ff');
+            ctx.fillStyle = gradasiBola;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00d4ff';
+            ctx.beginPath();
+            ctx.arc(bola.x + bola.w/2, bola.y + bola.h/2, bola.w/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Gambar rintangan
+            rintangan.forEach(r => {
+                let gradRintangan = ctx.createLinearGradient(r.x, r.y, r.x + r.w, r.y);
+                gradRintangan.addColorStop(0, '#ff4d6d');
+                gradRintangan.addColorStop(1, '#c9184a');
+                ctx.fillStyle = gradRintangan;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff4d6d';
+                ctx.fillRect(r.x, r.y, r.w, r.h);
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function loop() {
+            update();
+            gambar();
+            requestAnimationFrame(loop);
+        }
+
+        // Kontrol
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!gameJalankan && rintangan.length === 0) resetGame();
+                else lompat();
+            }
+        });
+
+        kanvas.addEventListener('click', () => {
+            if (!gameJalankan && rintangan.length === 0) resetGame();
+            else lompat();
+        });
+
+        btnMulai.addEventListener('click', resetGame);
+
+        loop();
+    </script>
+</body>
+</html>
